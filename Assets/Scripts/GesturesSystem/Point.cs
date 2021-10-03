@@ -4,8 +4,8 @@ namespace GesturesSystem
 {
 	public class Point
 	{
-		private ulong ID { get; set; }
-		private float2 Position { get; set; }
+		public ulong ID { get; private set; }
+		public float2 Position { get; private set; }
 		private int2 LookUpTablePosition { get; set; }
 
 		public Point (ulong id, float2 position)
