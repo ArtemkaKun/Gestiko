@@ -6,10 +6,10 @@ namespace GesturesSystem.GestureTypes
 	public class Gesture
 	{
         public string Name { get; private set; }
-        
-        private Point[] NormalizedPointsCollection { get; set; }
+        public Point[] NormalizedPointsCollection { get; private set; }
+        public int[][] LookUpTable { get; private set; }
+
         private Point[] RawPointsCollection { get; set; }
-        private int[][] LookUpTable { get; set; }
 
         public Gesture (Point[] points, string gestureName)
         {
