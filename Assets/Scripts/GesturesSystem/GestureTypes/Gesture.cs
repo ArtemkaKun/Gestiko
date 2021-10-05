@@ -1,4 +1,5 @@
 ﻿using System;
+using Unity.Mathematics;
 
 namespace GesturesSystem.GestureTypes
 {
@@ -29,119 +30,103 @@ namespace GesturesSystem.GestureTypes
         private void NormalizePoints ()
         {
             NormalizedPointsCollection = new PointsResampler().ResamplePoints(RawPointsCollection);
+            NormalizedPointsCollection = ScaleNormalizedPoints(NormalizedPointsCollection);
+            NormalizedPointsCollection = TranslateTo(NormalizedPointsCollection, Centroid(NormalizedPointsCollection));
+            TransformCoordinatesToIntegers();
+            ConstructLUT();
         }
-    }
-	
-	public class Gesture
-    {
-        public void Normalize(bool computeLUT = true)
+        
+        private Point[] ScaleNormalizedPoints(Point[] points)
         {
-            this.Points = Scale(Points);
-            this.Points = TranslateTo(Points, Centroid(Points));
+            float minx = float.MaxValue;
+            float miny = float.MaxValue;
+            float maxx = float.MinValue;
+            float maxy = float.MinValue;
             
-            if (computeLUT) // constructs a lookup table for fast lower bounding (used by $Q)
-            {
-                this.TransformCoordinatesToIntegers();
-                this.ConstructLUT();
-            }
-        }
-
-        #region gesture pre-processing steps: scale normalization, translation to origin, and resampling
-
-        /// <summary>
-        /// Performs scale normalization with shape preservation into [0..1]x[0..1]
-        /// </summary>
-        /// <param name="points"></param>
-        /// <returns></returns>
-        private Point[] Scale(Point[] points)
-        {
-            float minx = float.MaxValue, miny = float.MaxValue, maxx = float.MinValue, maxy = float.MinValue;
             for (int i = 0; i < points.Length; i++)
             {
-                if (minx > points[i].X) minx = points[i].X;
-                if (miny > points[i].Y) miny = points[i].Y;
-                if (maxx < points[i].X) maxx = points[i].X;
-                if (maxy < points[i].Y) maxy = points[i].Y;
+                float2 currentPointPosition = points[i].Position;
+                minx = math.min(minx, currentPointPosition.x);
+                miny = math.min(miny, currentPointPosition.y);
+                maxx = math.max(maxx, currentPointPosition.x);
+                maxy = math.max(maxy, currentPointPosition.y);
             }
 
             Point[] newPoints = new Point[points.Length];
             float scale = Math.Max(maxx - minx, maxy - miny);
+            
             for (int i = 0; i < points.Length; i++)
-                newPoints[i] = new Point((points[i].X - minx) / scale, (points[i].Y - miny) / scale, points[i].StrokeID);
+            {
+                float2 currentPointPosition = points[i].Position;
+                newPoints[i] = new Point(points[i].ID, (currentPointPosition - new float2(minx, miny)) / scale);
+            }
+
             return newPoints;
         }
-
-        /// <summary>
-        /// Translates the array of points by p
-        /// </summary>
-        /// <param name="points"></param>
-        /// <param name="p"></param>
-        /// <returns></returns>
+        
         private Point[] TranslateTo(Point[] points, Point p)
         {
             Point[] newPoints = new Point[points.Length];
+            
             for (int i = 0; i < points.Length; i++)
-                newPoints[i] = new Point(points[i].X - p.X, points[i].Y - p.Y, points[i].StrokeID);
+            {
+                newPoints[i] = new Point( points[i].ID, points[i].Position - p.Position);
+            }
+
             return newPoints;
         }
-
-        /// <summary>
-        /// Computes the centroid for an array of points
-        /// </summary>
-        /// <param name="points"></param>
-        /// <returns></returns>
+        
         private Point Centroid(Point[] points)
         {
-            float cx = 0, cy = 0;
+            float2 centroidCoordinates = float2.zero;
+            
             for (int i = 0; i < points.Length; i++)
             {
-                cx += points[i].X;
-                cy += points[i].Y;
+                centroidCoordinates += points[i].Position;
             }
-            return new Point(cx / points.Length, cy / points.Length, 0);
+            
+            return new Point(0, centroidCoordinates / points.Length);
         }
         
-        /// <summary>
-        /// Scales point coordinates to the integer domain [0..MAXINT-1] x [0..MAXINT-1]
-        /// </summary>
         private void TransformCoordinatesToIntegers()
         {
-            for (int i = 0; i < Points.Length; i++)
+            for (int i = 0; i < NormalizedPointsCollection.Length; i++)
             {
-                Points[i].intX = (int)((Points[i].X + 1.0f) / 2.0f * (MAX_INT_COORDINATES - 1));
-                Points[i].intY = (int)((Points[i].Y + 1.0f) / 2.0f * (MAX_INT_COORDINATES - 1));
+                NormalizedPointsCollection[i].SetLookUpTablePosition((int2)((NormalizedPointsCollection[i].Position + 1.0f) / 2.0f * (GestureDatabase.MAX_LOOK_UP_TABLE_COORDINATE - 1)));
             }
         }
-
-        /// <summary>
-        /// Constructs a Lookup Table that maps grip points to the closest point from the gesture path
-        /// </summary>
+        
         private void ConstructLUT()
         {
-            this.LUT = new int[LUT_SIZE][];
-            for (int i = 0; i < LUT_SIZE; i++)
-                LUT[i] = new int[LUT_SIZE];
+            LookUpTable = new int[GestureDatabase.DEFAULT_LOOK_UP_TABLE_SIZE][];
+            
+            for (int i = 0; i < LookUpTable.Length; i++)
+            {
+                LookUpTable[i] = new int[LookUpTable.Length];
+            }
 
-            for (int i = 0; i < LUT_SIZE; i++)
-                for (int j = 0; j < LUT_SIZE; j++)
+            for (int i = 0; i < LookUpTable.Length; i++)
+            {
+                for (int j = 0; j < LookUpTable.Length; j++)
                 {
                     int minDistance = int.MaxValue;
                     int indexMin = -1;
-                    for (int t = 0; t < Points.Length; t++)
+                    
+                    for (int t = 0; t < NormalizedPointsCollection.Length; t++)
                     {
-                        int row = Points[t].intY / LUT_SCALE_FACTOR;
-                        int col = Points[t].intX / LUT_SCALE_FACTOR;
-                        int dist = (row - i) * (row - i) + (col - j) * (col - j);
+                        int2 tableCellPosition = NormalizedPointsCollection[t].LookUpTablePosition / GestureDatabase.LOOK_UP_TABLE_SCALE_FACTOR;
+                        int dist = (tableCellPosition.y - i) * (tableCellPosition.y - i) + (tableCellPosition.x - j) * (tableCellPosition.x - j);
+                        
                         if (dist < minDistance)
                         {
                             minDistance = dist;
                             indexMin = t;
                         }
                     }
-                    LUT[i][j] = indexMin;
+                    
+                    LookUpTable[i][j] = indexMin;
                 }
+            }
         }
-
-        #endregion
     }
 }
