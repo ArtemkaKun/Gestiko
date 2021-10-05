@@ -5,12 +5,15 @@ namespace GesturesSystem.GestureTypes
 {
 	public class Gesture
 	{
+        public string Name { get; private set; }
+        
         private Point[] NormalizedPointsCollection { get; set; }
         private Point[] RawPointsCollection { get; set; }
         private int[][] LookUpTable { get; set; }
 
-        public Gesture (Point[] points)
+        public Gesture (Point[] points, string gestureName)
         {
+            Name = gestureName;
             ProceedInputPoints(points);
         }
 
