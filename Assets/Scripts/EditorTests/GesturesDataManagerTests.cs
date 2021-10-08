@@ -1,18 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+using NUnit.Framework;
 
-public class GestureIOModuleTests : MonoBehaviour
+public class GesturesDataManagerTests
 {
-    // Start is called before the first frame update
-    void Start()
+    [Test]
+    public void WriteTestToFileAndCheckIfThisFileContainsRightData ()
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        Assert.Fail("Not implemented");
     }
 }
