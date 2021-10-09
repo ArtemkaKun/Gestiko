@@ -8,10 +8,7 @@ namespace GesturesSystem
 	{
 		public void WriteGestureXML (Point[] points, string gestureName)
 		{
-			if (Directory.Exists(GestureDataSystemConstants.GesturesFolderPath) == false)
-			{
-				Directory.CreateDirectory(GestureDataSystemConstants.GesturesFolderPath);
-			}
+			GesturesDataHelper.MakeSureGesturesDataFolderIsExists();
 
 			using StreamWriter newGestureWriter = new StreamWriter(string.Format(GestureDataWriterConstants.GESTURE_DATA_FILE_NAME_TEMPLATE, GestureDataSystemConstants.GesturesFolderPath, gestureName));
 			newGestureWriter.WriteLine(GestureDataWriterConstants.GESTURE_DATA_FILE_SERVICE_HEADER);
