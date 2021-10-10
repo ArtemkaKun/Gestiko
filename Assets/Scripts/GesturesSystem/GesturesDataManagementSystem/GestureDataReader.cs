@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Xml;
 using GesturesSystem.GestureTypes;
@@ -16,7 +17,7 @@ namespace GesturesSystem
 			if (File.Exists(fileName) == true)
 			{
 				using XmlTextReader xmlReader = new XmlTextReader(File.OpenText(fileName));
-				
+
 				while (xmlReader.Read())
 				{
 					if (xmlReader.NodeType != XmlNodeType.Element)
@@ -30,7 +31,7 @@ namespace GesturesSystem
 							gestureName = xmlReader[GestureDataSystemConstants.GESTURE_NAME_PARAMETER];
 							break;
 						case GestureDataSystemConstants.POINT_TAG:
-							points.Add(new Point(int.Parse(xmlReader[GestureDataSystemConstants.POINT_ID_PARAMETER] ?? string.Empty), new float2(float.Parse(xmlReader[GestureDataSystemConstants.POINT_X_COORDINATE_PARAMETER] ?? string.Empty), float.Parse(xmlReader[GestureDataSystemConstants.POINT_Y_COORDINATE_PARAMETER] ?? string.Empty))));
+							points.Add(new Point(ParseXMLParameter<int>(xmlReader[GestureDataSystemConstants.POINT_ID_PARAMETER]), new float2(ParseXMLParameter<float>(xmlReader[GestureDataSystemConstants.POINT_X_COORDINATE_PARAMETER]), ParseXMLParameter<float>(xmlReader[GestureDataSystemConstants.POINT_Y_COORDINATE_PARAMETER]))));
 							break;
 					}
 				}
@@ -88,6 +89,11 @@ namespace GesturesSystem
 			}
 
 			return new Gesture(points.ToArray(), gestureName);
+		}
+
+		private T ParseXMLParameter<T> (string parameter)
+		{
+			return (T)Convert.ChangeType(parameter ?? string.Empty, typeof(T));
 		}
 	}
 }
