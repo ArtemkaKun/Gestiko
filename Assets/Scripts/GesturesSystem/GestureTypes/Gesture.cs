@@ -8,8 +8,7 @@ namespace GesturesSystem.GestureTypes
         public string Name { get; private set; }
         public Point[] NormalizedPointsCollection { get; private set; }
         public int[][] LookUpTable { get; private set; }
-
-        private Point[] RawPointsCollection { get; set; }
+        public Point[] RawPointsCollection { get; set; }
 
         public Gesture (Point[] points, string gestureName)
         {
