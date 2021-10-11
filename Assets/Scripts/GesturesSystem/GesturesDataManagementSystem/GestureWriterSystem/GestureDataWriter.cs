@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.IO;
+using System.Xml;
 using Unity.Mathematics;
 
 namespace GesturesSystem
@@ -56,18 +57,35 @@ namespace GesturesSystem
 
 		private void WriteGestureDataToFile (Point[] points, string gestureName, string expectedNewGestureDataFilePath)
 		{
-			using StreamWriter newGestureWriter = new StreamWriter(expectedNewGestureDataFilePath);
-			newGestureWriter.WriteLine(GestureDataWriterConstants.GESTURE_DATA_FILE_SERVICE_HEADER);
-			newGestureWriter.WriteLine(GestureDataWriterConstants.GESTURE_OPEN_TAG_TEMPLATE, gestureName);
+			using FileStream newGesturesFileStream = File.Create(expectedNewGestureDataFilePath);
+			using XmlWriter newFileXMLWriter = XmlWriter.Create(newGesturesFileStream, new XmlWriterSettings { Indent = true });
+
+			newFileXMLWriter.WriteStartDocument();
+			newFileXMLWriter.WriteStartElement(GestureDataSystemConstants.GESTURE_TAG);
+			newFileXMLWriter.WriteAttributeString(GestureDataSystemConstants.GESTURE_NAME_PARAMETER, gestureName);
 
 			for (int pointIndex = 0; pointIndex < points.Length; pointIndex++)
 			{
 				Point cachedPoint = points[pointIndex];
-				float2 cachedPointPosition = cachedPoint.Position;
-				newGestureWriter.WriteLine(GestureDataWriterConstants.POINT_TAG_TEMPLATE, cachedPoint.ID.ToString(), cachedPointPosition.x.ToString(CultureInfo.CurrentCulture), cachedPointPosition.y.ToString(CultureInfo.CurrentCulture));
+				WritePointData(cachedPoint, newFileXMLWriter);
 			}
 
-			newGestureWriter.WriteLine(GestureDataWriterConstants.GESTURE_CLOSE_TAG);
+			newFileXMLWriter.WriteEndElement();
+		}
+
+		private void WritePointData (Point cachedPoint, XmlWriter newFileXMLWriter)
+		{
+			float2 cachedPointPosition = cachedPoint.Position;
+			newFileXMLWriter.WriteStartElement(GestureDataSystemConstants.POINT_TAG);
+			newFileXMLWriter.WriteAttributeString(GestureDataSystemConstants.POINT_ID_PARAMETER, cachedPoint.ID.ToString());
+			WritePointPositionCoordinate(GestureDataSystemConstants.POINT_X_COORDINATE_PARAMETER, cachedPointPosition.x, newFileXMLWriter);
+			WritePointPositionCoordinate(GestureDataSystemConstants.POINT_Y_COORDINATE_PARAMETER, cachedPointPosition.y, newFileXMLWriter);
+			newFileXMLWriter.WriteEndElement();
+		}
+
+		private void WritePointPositionCoordinate (string attributeName, float coordinateValue, XmlWriter newFileXMLWriter)
+		{
+			newFileXMLWriter.WriteAttributeString(attributeName, coordinateValue.ToString(CultureInfo.CurrentCulture));
 		}
 	}
 }
